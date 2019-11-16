@@ -1,0 +1,107 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart';
+
+class RestClient {
+  ApiCallBacks _apiCallBacks;
+
+  RestClient(this._apiCallBacks);
+
+  Future<dynamic> post(Map requestParam, String requestCode) async {
+    bool isInternet = await Util.isConnectedNetwork();
+    if (!isInternet) {
+      _apiCallBacks.onConnectionError("Internet is not connected", requestCode);
+    } else {
+      String url = WebUrl.BASE_URL + requestCode;
+      final response = await http.post(url,
+          headers: {
+            HttpHeaders.contentTypeHeader: 'application/json',
+            'Authentication': WebUrl.AUTH_KEY
+          },
+          body: json.encode(requestParam));
+
+      print("url: " + response.body.toString());
+
+      final responseBody = json.decode(response.body);
+      if (response.statusCode != 200 && responseBody == null) {
+        _apiCallBacks.onError(
+            "An error occured Status Code : $response.statusCode", requestCode);
+      } else {
+        print("hello test");
+        if (responseBody["status"] == 1) {
+          var returnObject =
+              ResponseManager.parser(requestCode, responseBody['result']);
+          _apiCallBacks.onSuccess(
+              returnObject, responseBody['message'], requestCode);
+        } else {
+          print("status == 0");
+          _apiCallBacks.onError(responseBody["message"], requestCode);
+        }
+      }
+    }
+  }
+
+  void uploadImage(File imageFile, int userId, String requestCode,
+      {String name, String descriprion, String date, int holidayId}) async {
+    bool isInternet = await Util.isConnectedNetwork();
+    if (!isInternet) {
+      _apiCallBacks.onConnectionError("Internet is not connected", requestCode);
+    } else {
+      String url = WebUrl.BASE_URL + requestCode;
+
+      var uri = Uri.parse(url);
+
+      // new multipart request
+      var request = new http.MultipartRequest("POST", uri);
+      //request.fields['user'] = 'user001';
+      request.fields['id'] = userId.toString();
+
+      if (requestCode == RequestCode.UPDATE_HOLIDAY || requestCode==RequestCode.ADD_HOLIDAY) {
+        if (requestCode == RequestCode.UPDATE_HOLIDAY) {
+          request.fields['holidayId'] = holidayId.toString();
+        }
+        request.fields['name'] = name;
+        request.fields['description'] = descriprion;
+        request.fields['holidayDate'] = date;
+      }
+
+      if (imageFile != null) {
+        var stream =
+            new http.ByteStream(DelegatingStream.typed(imageFile.openRead()));
+        // get length for http post
+        var length = await imageFile.length();
+        var multipartFile = new http.MultipartFile('image', stream, length,
+            filename: basename(
+                imageFile.path) //contentType: new MediaType('image', 'jpeg')
+            );
+        request.files.add(multipartFile);
+      }
+
+      // send request
+      var response = await request.send();
+
+      print(response.statusCode);
+
+      response.stream.transform(utf8.decoder).listen((value) {
+        final responseBody = json.decode(value);
+        if (response.statusCode != 200 && responseBody == null) {
+          _apiCallBacks.onError(
+              "An error occured Status Code : $response.statusCode",
+              requestCode);
+        } else {
+          if (responseBody["status"] == 1) {
+            var returnObject =
+                ResponseManager.parser(requestCode, responseBody['result']);
+            _apiCallBacks.onSuccess(
+                returnObject, responseBody['message'], requestCode);
+          } else {
+            print("status == 0");
+            _apiCallBacks.onError(responseBody["message"], requestCode);
+          }
+        }
+      });
+    }
+  }
+}
