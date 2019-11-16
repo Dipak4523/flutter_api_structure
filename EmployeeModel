@@ -1,0 +1,77 @@
+class EmployeeModel {
+  int id;
+  String employeeCode;
+  String fullName;
+  String emailId;
+  String birthDate;
+  String mobileNo;
+  String alternativeMobileNo;
+  String gender;
+  int parentEmployeeId;
+  String parentFullName;
+  int isActive;
+  String department;
+  String designation;
+  String profilePic;
+  int leaveTypeId;
+
+  EmployeeModel(
+      {this.id,
+      this.employeeCode,
+      this.fullName,
+      this.emailId,
+      this.birthDate,
+      this.mobileNo,
+      this.alternativeMobileNo,
+      this.gender,
+      this.parentEmployeeId,
+      this.parentFullName,
+      this.isActive,
+      this.department,
+        this.profilePic,
+      this.designation,this.leaveTypeId});
+
+  EmployeeModel.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
+    employeeCode = json['employeeCode'];
+    fullName = json['fullName'];
+    emailId = json['emailId'];
+    birthDate = json['birthDate'];
+    mobileNo = json['mobileNo'];
+    alternativeMobileNo = json['alternativeMobileNo'];
+    gender = json['gender'];
+    parentEmployeeId = json['parentEmployeeId'];
+    parentFullName = json['parentFullName'];
+    isActive = json['isActive'];
+    department = json['department'];
+    designation = json['designation'];
+    leaveTypeId= json['leaveTypeId'];
+    profilePic= json['profilePic'];
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['id'] = this.id;
+    data['employeeCode'] = this.employeeCode;
+    data['fullName'] = this.fullName;
+    data['emailId'] = this.emailId;
+    data['birthDate'] = this.birthDate;
+    data['mobileNo'] = this.mobileNo;
+    data['alternativeMobileNo'] = this.alternativeMobileNo;
+    data['gender'] = this.gender;
+    data['parentEmployeeId'] = this.parentEmployeeId;
+    data['parentFullName'] = this.parentFullName;
+    data['isActive'] = this.isActive;
+    data['department'] = this.department;
+    data['designation'] = this.designation;
+    data['profilePic'] = this.profilePic;
+    data['leaveTypeId'] = this.leaveTypeId;
+    return data;
+  }
+}
+
+class ChildEmployee {
+  String empName;
+  bool isChild;
+  ChildEmployee(this.empName, this.isChild);
+}
