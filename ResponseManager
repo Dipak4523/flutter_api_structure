@@ -1,0 +1,14 @@
+class ResponseManager {
+  static dynamic parser(String requestCode, var result) {
+    get single request
+    if (requestCode == RequestCode.LOGIN) {
+      
+      return EmployeeModel.fromJson(result[WebFields.EMPLOYEE]);
+    //get array list request
+    } else if (requestCode == RequestCode.GET_EMPLOYEES) {
+      return (result["employees"])
+          .map((data) => EmployeeModel.fromJson(data))
+          .toList();
+    }
+    
+}
