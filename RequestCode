@@ -1,0 +1,4 @@
+class RequestCode {
+  //define which api you want to call
+  static const String EmployeeList = 'employees';
+  }
