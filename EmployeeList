@@ -1,0 +1,493 @@
+import 'package:flutter/material.dart';
+
+class EmployeeList extends StatefulWidget {
+  @override
+  _EmployeeListState createState() => _EmployeeListState();
+}
+
+class _EmployeeListState extends State<EmployeeList>
+    with SingleTickerProviderStateMixin
+    implements ApiCallBacks {
+  List<EmployeeModel> _listEmployeeModel = new List();
+  List<EmployeeModel> _listFilterEmployeeModel = new List();
+  List<Color> _listColor = new List();
+  List<ChildEmployee> _listChildEmployee = new List();
+  List<ParrentEmployeeModel> _listParrentEmployee = new List();
+  var scaffoldStateKey = GlobalKey<ScaffoldState>();
+  bool isLoading = false;
+  String errorMsg;
+
+  AnimationController controller;
+  bool isFilterOpen = false;
+  final keyWidgets = new GlobalKey();
+  double maxHeightOfFilter = 0.0;
+  String _SelectEmployeeDepartment = "";
+  List<String> _listSelectDepartment = new List();
+
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(
+        vsync: this, duration: new Duration(milliseconds: 100), value: 1.0);
+
+    addRandomColor();
+    addChildEmployeeList();
+    callApi();
+  }
+
+  void addChildEmployeeList() {
+    _listChildEmployee.add(new ChildEmployee("Gopal", true));
+    _listChildEmployee.add(new ChildEmployee("Sheil", true));
+  }
+
+  void addRandomColor() {
+    _listColor.add(Colors.green);
+    _listColor.add(Colors.purpleAccent);
+    _listColor.add(primaryColor);
+    _listColor.add(Colors.deepOrange);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        key: scaffoldStateKey,
+        appBar: AppBar(
+          elevation: 0.0,
+          title: Text(ConstantField.EMPLOYEES),
+          actions: <Widget>[designFilterIcon(), designAddEmployee()],
+        ),
+        backgroundColor: homeBgColor,
+        body: isLoading
+            ? Center(
+                child: new CircularProgressIndicator(
+                    strokeWidth: 2.0,
+                    valueColor:
+                        new AlwaysStoppedAnimation<Color>(primaryColor)))
+            : _listEmployeeModel != 0
+                ? LayoutBuilder(
+                    builder: bothPanel,
+                  )
+                : Center(
+                    child: Text(errorMsg),
+                  ));
+  }
+
+  void onBackPress() {
+    Navigator.pop(context, true);
+  }
+
+  Animation<RelativeRect> getPanelAnimation(BoxConstraints boxConstraint) {
+    return RelativeRectTween(
+            begin: RelativeRect.fromLTRB(0.0, maxHeightOfFilter, 0.0, 0.0),
+            end: RelativeRect.fromLTRB(0.0, 0.0, 0.0, 0.0))
+        .animate(new CurvedAnimation(parent: controller, curve: Curves.linear));
+  }
+
+  bool isVisiblePanel() {
+    final AnimationStatus status = controller.status;
+    return status == AnimationStatus.completed ||
+        status == AnimationStatus.forward;
+  }
+
+  _getSizes(_) {
+    final RenderBox renderBoxRed = keyWidgets.currentContext.findRenderObject();
+    final sizeRed = renderBoxRed.size.height;
+    maxHeightOfFilter = renderBoxRed.size.height;
+  }
+
+  Widget designFilter() {
+    return Container(
+      padding: const EdgeInsets.only(
+          left: minPadding8,
+          top: minPadding8,
+          right: minPadding8,
+          bottom: minPadding8),
+      child: Column(
+        children: <Widget>[
+          Column(
+            key: keyWidgets,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              designSelectDepartment(),
+              Padding(padding: EdgeInsets.only(top: minPadding8 * 2))
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget designSelectDepartment() {
+    return CallBackCustomDropDown(
+      hintText: ConstantField.SELECT_DEPARTMENT,
+      listType: _listSelectDepartment,
+      onChanged: _onChangedSelectDepartment,
+      isExpanded: true,
+      strValue: _SelectEmployeeDepartment,
+    );
+  }
+
+  void _onChangedSelectDepartment(String str) {
+    _listFilterEmployeeModel.clear();
+    setState(() {
+      _listFilterEmployeeModel =
+          _listEmployeeModel.where((emp) => emp.department == str).toList();
+    });
+  }
+
+  Widget bothPanel(BuildContext contex, BoxConstraints constraint) {
+    final ThemeData themeData = Theme.of(context);
+    return Container(
+      child: new Stack(
+        children: <Widget>[
+          //back panel
+          new Container(
+            color: themeData.primaryColor,
+            child: designFilter(),
+          ),
+
+          //front panel
+          PositionedTransition(
+            rect: getPanelAnimation(constraint),
+            child: Material(
+              elevation: 12.0,
+              borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16.0),
+                  topRight: Radius.circular(16.0)),
+              color: homeBgColor,
+              child: errorMsg != ""
+                  ? Column(
+                      mainAxisSize: MainAxisSize.max,
+                      children: <Widget>[
+                        Expanded(
+                          child: mainWidgets(),
+                        )
+                      ],
+                    )
+                  : Center(
+                      child: Text(
+                        errorMsg,
+                        style: CommanControl.title(),
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget designAddEmployee() {
+    return InkWell(
+      onTap: () {
+        navigateToNextScreen(
+            ConstantField.ADD_EMPLOYEE, null, _listParrentEmployee);
+      },
+      child: Container(
+        padding: EdgeInsets.only(right: minPadding8 + 4),
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget designFilterIcon() {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          controller.fling(velocity: isVisiblePanel() ? -1.0 : 1.0);
+        });
+      },
+      child: Container(
+        padding: EdgeInsets.only(right: minPadding8),
+        child: InkWell(
+          child: Icon(
+            Icons.filter_list,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget mainWidgets() {
+    return Container(
+        padding: EdgeInsets.only(left: minPadding8 / 2, right: minPadding8 / 2),
+        child: callListView());
+  }
+
+  Widget callListView() {
+    return _listFilterEmployeeModel.length != 0
+        ? ListView.builder(
+            itemBuilder: (BuildContext builderContext, int index) =>
+                designCard(_listFilterEmployeeModel[index], index),
+            itemCount: _listFilterEmployeeModel.length,
+          )
+        : ListView.builder(
+            itemBuilder: (BuildContext builderContext, int index) =>
+                designCard(_listEmployeeModel[index], index),
+            itemCount: _listEmployeeModel.length,
+          );
+  }
+
+  Widget designCard(EmployeeModel employeeModel, int index) {
+    return InkWell(
+      onTap: () {
+        navigateToNextScreen(
+            ConstantField.EDIT_EMPLOYEE, employeeModel, _listParrentEmployee);
+      },
+      child: Container(
+        alignment: Alignment.centerLeft,
+        margin: EdgeInsets.only(top: minPadding8),
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          children: <Widget>[
+            Row(children: <Widget>[
+              designCircleAvatar(
+                  employeeModel.profilePic, employeeModel.fullName, index),
+              Padding(padding: EdgeInsets.only(left: minPadding8)),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.max,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    designEmployeeName(employeeModel.fullName),
+                    designDesignation(employeeModel.designation)
+                  ],
+                ),
+              ),
+              Padding(padding: EdgeInsets.only(right: minPadding8)),
+              designApplyLeave(employeeModel.id),
+              Padding(padding: EdgeInsets.only(right: minPadding8)),
+              designDeleteIcon(employeeModel.id),
+              Padding(padding: EdgeInsets.only(right: minPadding8)),
+            ]),
+            Container(
+              margin: EdgeInsets.only(top: minPadding8),
+              height: 0.9,
+              color: Colors.grey,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget designEmployeeName(String empName) {
+    return Text(
+      empName,
+      style: CommanControl.title(),
+      textScaleFactor: 1.0,
+      overflow: TextOverflow.clip,
+    );
+  }
+
+  Widget designDesignation(String designation) {
+    return Text(
+      designation,
+      style: CommanControl.medium(),
+      textScaleFactor: 0.8,
+    );
+  }
+
+  Widget designDeleteIcon(int empId) {
+    return InkWell(
+      onTap: () {
+        openAlertDialog(empId);
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(minPadding8),
+        child: Icon(
+          Icons.delete_forever,
+          color: Colors.red,
+        ),
+      ),
+    );
+  }
+
+  Widget designApplyLeave(int empId) {
+    return InkWell(
+      onTap: () {
+        applyLeaveEmployee(empId);
+      },
+      child: Container(
+        decoration: BoxDecoration(
+            border: Border.all(color: Colors.white),
+            borderRadius: BorderRadius.all(Radius.circular(minPadding8)),
+            color: primaryColor),
+        child: Padding(
+          padding: const EdgeInsets.all(minPadding8),
+          child: Text(
+            ConstantField.APPLY_LEAVE,
+            style: CommanControl.small(color: Colors.white),
+            textScaleFactor: 0.8,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void applyLeaveEmployee(int empId) async {
+    bool result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (builder) => ApplyLeave(
+                  employeeId: empId,
+                )));
+    if (result == true) {
+      scaffoldStateKey.currentState.showSnackBar(new SnackBar(
+          content: new Text(ConstantField.LEAVE_REQUEST_APPLY_SUCCESSFULLY)));
+    }
+  }
+
+  Widget designCircleAvatar(String profielPic, String empName, int index) {
+    List<String> ss = findSpaceName(empName);
+    return profielPic != null
+        ? designProfilePic(profielPic)
+        : CircleAvatar(
+            backgroundColor: getRandomColor(index),
+            child: Text(
+              ss.length >= 2
+                  ? ss[0][0].toUpperCase() + ss[1][0].toUpperCase()
+                  : ss[0][0].toUpperCase(),
+              style: CommanControl.title(color: Colors.white),
+              textScaleFactor: 1.0,
+            ),
+          );
+  }
+
+  Widget designProfilePic(String profilePic) {
+    return new Container(
+      width: 40.0,
+      height: 40.0,
+      decoration: new BoxDecoration(
+        color: primaryColor,
+        image: new DecorationImage(
+          image: new NetworkImage(profilePic),
+          fit: BoxFit.contain,
+        ),
+        borderRadius: new BorderRadius.all(new Radius.circular(40.0)),
+        border: new Border.all(
+          color: colorBlack,
+          width: 0.0,
+        ),
+      ),
+    );
+  }
+
+  List<String> findSpaceName(String empName) {
+    return empName.split(" ").where((s) => !s.isEmpty).toList();
+  }
+
+  Color getRandomColor(int index) {
+    var colorr = _listColor[index % _listColor.length];
+    return colorr;
+  }
+
+  void navigateToNextScreen(String title, EmployeeModel emp,
+      List<ParrentEmployeeModel> parrentEmp) async {
+    bool result =
+        await Navigator.push(context, MaterialPageRoute(builder: (context) {
+      return AddEmployee(
+          title: title, employeeModel: emp, parrentEmployeeModel: parrentEmp);
+    }));
+    if (result == true) {
+      //call api for refrece
+      callApi();
+    }
+  }
+
+  void openAlertDialog(int empId) {
+    showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (_) => AlertDialog(
+              contentPadding: EdgeInsets.all(0.0),
+              content: RemoveEmployeeDialog(onUpdateDialog, empId),
+            ));
+  }
+
+  void onUpdateDialog(bool isUpdate) {
+    if (isUpdate) {
+      callApi();
+    }
+  }
+
+  RestClient restClient;
+
+  void callApi() async {
+    setState(() {
+      isLoading = true;
+    });
+    int id = await SessionManager.getIntData(USER_ID);
+    Future.delayed(Duration(seconds: 1), () {
+      restClient = new RestClient(this);
+      Map<String, dynamic> data = {WebFields.ID: id};
+      restClient.post(data, RequestCode.GET_EMPLOYEES);
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    controller.dispose();
+  }
+
+  @override
+  void onError(String errorMsg, String requestCode) {
+    // scaffoldStateKey.currentState.showSnackBar(new SnackBar(content: new Text(errorMsg)));
+    print("Error Msg" + errorMsg);
+    setState(() {
+      isLoading = false;
+      this.errorMsg = errorMsg;
+      WidgetsBinding.instance.addPostFrameCallback(_getSizes);
+    });
+  }
+
+  @override
+  void onSuccess(dynamic object, String strMsg, String requestCode) {
+    setState(() {
+      isLoading = false;
+    });
+    if (requestCode == RequestCode.GET_EMPLOYEES) {
+      List<EmployeeModel> empList =
+          new List<EmployeeModel>.from((object as List<dynamic>));
+      setState(() {
+        _listEmployeeModel.clear();
+        _listEmployeeModel = empList;
+        parentEmployeeList();
+        departmentList();
+        WidgetsBinding.instance.addPostFrameCallback(_getSizes);
+      });
+    }
+  }
+
+  void departmentList() {
+    _listSelectDepartment.clear();
+    _listSelectDepartment.add(ConstantField.ALL);
+    for (int i = 0; i < _listEmployeeModel.length; i++) {
+      _listSelectDepartment.add(_listEmployeeModel[i].department);
+    }
+    //remove duplicate string
+    _listSelectDepartment = _listSelectDepartment.toSet().toList();
+  }
+
+  @override
+  void onConnectionError(String error, String requestCode) {
+    setState(() {
+      this.errorMsg = error;
+      isLoading = false;
+      WidgetsBinding.instance.addPostFrameCallback(_getSizes);
+    });
+    scaffoldStateKey.currentState
+        .showSnackBar(new SnackBar(content: new Text(error)));
+  }
+
+  void parentEmployeeList() {
+    _listParrentEmployee.clear();
+    for (int i = 0; i < _listEmployeeModel.length; i++) {
+      _listParrentEmployee.add(new ParrentEmployeeModel(
+          id: _listEmployeeModel[i].id,
+          fullName: _listEmployeeModel[i].fullName));
+    }
+  }
+}
