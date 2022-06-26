@@ -3,3 +3,5 @@ abstract class ApiCallBacks{
   void onError(String errorMsg,String requestCode);
   void onConnectionError(String error,String requestCode);
 }
+
+//https://levelup.gitconnected.com/flutter-networking-using-the-bloc-pattern-architecture-cab2aa826a4c
